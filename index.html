@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.3.0/css/all.min.css">
+    <title>Day #20 - QR Code Reader | AsmrProg</title>
+    <style>
+@import url("https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@300;400;500;700&display=swap");
+
+*{
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: 'Zen Maru Gothic';
+}
+
+body{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 0 10px;
+    background-image: url(https://min-chi.material.jp/mc/materials/background-c/levee_trail/_levee_trail_1.jpg);    /* 背景画像指定 */
+    background-repeat: no-repeat;
+    background-position:60% 60%;
+    background-size:cover;
+}
+
+.wrapper{
+    height: 270px;
+    width: 420px;
+    background-color: #334155;
+    border-radius: 7px;
+    padding: 30px 30px 35px;
+    transition: all 0.2s ease;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.wrapper.active{
+    height: 525px;
+}
+
+.wrapper form{
+    height: 210px;
+    display: flex;
+    cursor: pointer;
+    user-select: none;
+    text-align: center;
+    border-radius: 7px;
+    background: #fff;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.wrapper.active form{
+    height: 225px;
+    pointer-events: none;
+}
+
+form img{
+    display: none;
+    max-width: 148px;
+}
+
+.wrapper.active form img{
+    display: block;
+}
+
+.wrapper.active form .content{
+    display: none;
+}
+
+form .content i{
+    color: #334155;
+    font-size: 55px;
+}
+
+form .content p{
+    color: #334155;
+    margin-top: 15px;
+    font-size: 16px;
+}
+
+.wrapper .details{
+    height: 100px;
+    opacity: 0;
+    margin-top: 25px;
+    pointer-events: none;
+}
+
+.wrapper.active .details{
+    height: 100px;
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 0.5s 0.05s ease;
+}
+
+.details textarea{
+    width: 100%;
+    height: 128px;
+    outline: none;
+    resize: none;
+    color: #fff;
+    font-size: 18px;
+    background: none;
+    border-radius: 5px;
+    padding: 10px 15px;
+    border: 1px solid #fff;
+}
+
+textarea::-webkit-scrollbar{
+    width: 0px;
+}
+
+textarea:hover::-webkit-scrollbar{
+    width: 5px;
+}
+
+textarea:hover::-webkit-scrollbar-track{
+    background: none;
+}
+
+textarea:hover::-webkit-scrollbar-thumb{
+    background: #fff;
+    border-radius: 8px;
+}
+
+.details .buttons{
+    display: flex;
+    margin-top: 20px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.buttons button{
+    height: 26px;
+    outline: none;
+    border: none;
+    font-weight: 500;
+    font-size: 16px;
+    cursor: pointer;
+    color: #334155;
+    border-radius: 5px;
+    background: #fff;
+    transition: transform 0.3s ease;
+    width: calc(100% / 2 - 10px);
+}
+
+.buttons button:active{
+    transform: scale(0.95);
+}
+
+@media (max-width: 450px){
+    .wrapper{
+        padding: 25px;
+        height: 260px;
+    }
+    .wrapper.active{
+        height: 520px;
+    }
+}
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <h3>QRコードリーダー</h3>
+        <form action="#">
+            <input type="file" hidden>
+            <img src="#" alt="">
+            <div class="content">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <p>ファイルをアップロードして読み取る</p>
+            </div>
+        </form>
+        <div class="details">
+            <h3>QRコードリーダー</h3>
+            <h4>リンク、文章など</h4>
+            <textarea spellcheck="false" disabled></textarea>
+            <h4>コピーは上のアドレスを選択して行って下さい。</h4>
+            <div class="buttons">
+                <button class="close">閉じる</button>
+            </div>
+        </div>
+    </div>
+<script>
+const wrapper = document.querySelector(".wrapper");
+const form = document.querySelector("form");
+const fileInp = document.querySelector("input");
+const infoText = document.querySelector("p");
+const closeBtn = document.querySelector(".close");
+const copyBtn = document.querySelector(".copy");
+
+// Fecth Data From Api
+
+function fetchRequest(file, formData) {
+    infoText.innerText = "QRコードをスキャンしています…";
+    fetch("http://api.qrserver.com/v1/read-qr-code/", {
+        method: 'POST', body: formData
+    }).then(res => res.json()).then(result => {
+        result = result[0].symbol[0].data;
+        infoText.innerText = result ? "ファイルをアップロードして読み取る" : "QRコードはありません。";
+        if (!result) return;
+        document.querySelector("textarea").innerText = result;
+        form.querySelector("img").src = URL.createObjectURL(file);
+        wrapper.classList.add("active");
+    }).catch(() => {
+        infoText.innerText = "QRコードはありません。";
+    });
+}
+
+// Send QR Code File With Request To Api
+fileInp.addEventListener("change", async e => {
+    let file = e.target.files[0];
+    if (!file) return;
+    let formData = new FormData();
+    formData.append('file', file);
+    fetchRequest(file, formData);
+});
+
+// When user click on form do fileInp Evenetlistener function
+form.addEventListener("click", () => fileInp.click());
+
+closeBtn.addEventListener("click", () => wrapper.classList.remove("active"));
+</script>
+</body>
+</html>
